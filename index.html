@@ -50,6 +50,7 @@
     .setup-btn{width:100%;padding:12px;background:#085041;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
     .err{font-size:13px;color:#A32D2D;text-align:center;margin-top:8px;display:none}
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
@@ -87,6 +88,19 @@
     <input class="code-input" id="codeInput" placeholder="ABC123" maxlength="6"
       oninput="this.value=this.value.toUpperCase()"
       onkeydown="if(event.key==='Enter') redeemCode()"/>
+  </div>
+
+  <!-- Scan button -->
+  <button onclick="toggleScanner()" id="scanBtn" style="width:100%;padding:12px;background:#E1F5EE;color:#085041;border:1px solid #b3e6d5;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px">
+    📷 Scan QR Code
+  </button>
+
+  <!-- Scanner container -->
+  <div id="scannerWrap" style="display:none;margin-bottom:12px">
+    <div id="qrScanner" style="border-radius:12px;overflow:hidden"></div>
+    <button onclick="stopScanner()" style="width:100%;margin-top:8px;padding:10px;background:#FDE8E8;color:#A32D2D;border:none;border-radius:10px;font-size:14px;cursor:pointer">
+      ✕ Cancel Scan
+    </button>
   </div>
 
   <button class="redeem-btn" id="redeemBtn" onclick="redeemCode()">
@@ -242,6 +256,60 @@ function clearResult(){
   document.getElementById('result').style.display='none';
   document.getElementById('clearBtn').style.display='none';
   document.getElementById('codeInput').focus();
+}
+
+
+// ── QR SCANNER ────────────────────────────────────────────────────────────────
+let html5QrScanner = null;
+let scannerRunning = false;
+
+async function toggleScanner(){
+  if(scannerRunning){ stopScanner(); return; }
+  startScanner();
+}
+
+async function startScanner(){
+  const wrap = document.getElementById('scannerWrap');
+  const btn  = document.getElementById('scanBtn');
+  wrap.style.display = 'block';
+  btn.textContent = '⏹ Stop Scanner';
+  btn.style.background = '#FDE8E8';
+  btn.style.color = '#A32D2D';
+  scannerRunning = true;
+
+  try{
+    html5QrScanner = new Html5Qrcode('qrScanner');
+    await html5QrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 220, height: 220 } },
+      (decodedText) => {
+        // Code scanned successfully
+        const code = decodedText.trim().toUpperCase();
+        document.getElementById('codeInput').value = code;
+        stopScanner();
+        // Auto-redeem
+        redeemCode();
+      },
+      (error) => {} // ignore scan errors silently
+    );
+  } catch(e){
+    stopScanner();
+    alert('Camera not available: ' + e.message);
+  }
+}
+
+function stopScanner(){
+  const wrap = document.getElementById('scannerWrap');
+  const btn  = document.getElementById('scanBtn');
+  wrap.style.display = 'none';
+  btn.textContent = '📷 Scan QR Code';
+  btn.style.background = '#E1F5EE';
+  btn.style.color = '#085041';
+  scannerRunning = false;
+  if(html5QrScanner){
+    html5QrScanner.stop().catch(()=>{});
+    html5QrScanner = null;
+  }
 }
 
 // Poll counter every 15 seconds
