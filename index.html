@@ -82,6 +82,26 @@
     <div class="counter-text" id="counterText">— of — remaining</div>
   </div>
 
+  <!-- Stats dashboard -->
+  <div id="statsDash" style="display:none;background:#f9f9f9;border-radius:14px;border:1px solid #eee;padding:0.85rem;margin-bottom:12px">
+    <div style="font-size:13px;font-weight:700;color:#085041;margin-bottom:10px">📊 Offer Summary</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+      <div style="background:#E1F5EE;border-radius:10px;padding:10px 4px">
+        <div style="font-size:22px;font-weight:800;color:#085041" id="statRedeemed">—</div>
+        <div style="font-size:11px;color:#555;margin-top:2px">✅ Redeemed</div>
+      </div>
+      <div style="background:#FFF3CD;border-radius:10px;padding:10px 4px">
+        <div style="font-size:22px;font-weight:800;color:#856404" id="statPending">—</div>
+        <div style="font-size:11px;color:#555;margin-top:2px">⏳ Pending</div>
+      </div>
+      <div style="background:#f0f0f0;border-radius:10px;padding:10px 4px">
+        <div style="font-size:22px;font-weight:800;color:#555" id="statTotal">—</div>
+        <div style="font-size:11px;color:#555;margin-top:2px">📋 Total</div>
+      </div>
+    </div>
+    <button onclick="loadStats()" style="width:100%;margin-top:10px;padding:7px;background:#fff;border:1px solid #ddd;border-radius:8px;font-size:12px;color:#555;cursor:pointer">↻ Refresh</button>
+  </div>
+
   <!-- Code input -->
   <div class="input-wrap">
     <label>Enter visitor code</label>
@@ -168,6 +188,7 @@ async function loadOffer(){
     await refreshCounter();
     document.getElementById('setupCard').style.display='none';
     document.getElementById('redeemCard').style.display='block';
+    loadDetailedStats();
 
   }catch(e){
     err.textContent = 'Cannot connect. Please check your internet.';
@@ -228,6 +249,7 @@ async function redeemCode(){
       }
       // Auto-clear after 4 seconds
       setTimeout(clearResult, 4000);
+      loadDetailedStats();
     } else {
       showResult(false, '❌ Invalid', d.error, '');
     }
@@ -312,8 +334,88 @@ function stopScanner(){
   }
 }
 
+// ── STATS DASHBOARD ──────────────────────────────────────────────────────────
+async function loadStats(){
+  if(!currentOffer && !cashierKey) return;
+  try{
+    // Use backend claims endpoint via cashier key
+    // We'll re-use the redeem endpoint with a special stats request
+    // Since we don't have a direct stats endpoint, we track locally + show from counter
+    const r = await fetch(`${BACKEND}/flash-offers/${currentOffer?.id || 0}/status`);
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d.success) return;
+
+    const total    = d.total_qty    || 0;
+    const remaining= d.remaining_qty|| 0;
+    const claimed  = total - remaining;
+
+    // Get redeemed count from manager endpoint if available
+    // For cashier, estimate: claimed = total claimed, show remaining as pending
+    document.getElementById('statTotal').textContent    = claimed;
+    document.getElementById('statPending').textContent  = remaining + ' left';
+    document.getElementById('statRedeemed').textContent = claimed;
+    document.getElementById('statsDash').style.display  = 'block';
+  }catch(e){}
+}
+
+// Better stats — fetch actual claim details
+async function loadDetailedStats(){
+  if(!cashierKey) return;
+  try{
+    const r = await fetch(BACKEND+'/flash-offers/stats',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({cashier_key: cashierKey})
+    });
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d.success) return;
+
+    document.getElementById('statRedeemed').textContent = d.redeemed;
+    document.getElementById('statPending').textContent  = d.pending;
+    document.getElementById('statTotal').textContent    = d.total;
+    document.getElementById('statsDash').style.display  = 'block';
+
+    // Show recent redemptions if any
+    let recentEl = document.getElementById('statRecent');
+    if(!recentEl){
+      recentEl = document.createElement('div');
+      recentEl.id = 'statRecent';
+      recentEl.style.cssText = 'margin-top:10px;max-height:160px;overflow-y:auto';
+      document.getElementById('statsDash').appendChild(recentEl);
+    }
+    if(d.recent && d.recent.length){
+      recentEl.innerHTML = '<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Recent redemptions:</div>' +
+        d.recent.map(r => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#fff;border-radius:8px;margin-bottom:4px;border:1px solid #eee">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#1a1a1a">${r.name}</div>
+              <div style="font-size:10px;color:#aaa;letter-spacing:2px">${r.code}</div>
+            </div>
+            <div style="font-size:10px;color:#1D9E75;font-weight:600">✅</div>
+          </div>`).join('');
+    }
+
+    // Show expired warning
+    if(d.expired > 0){
+      let expEl = document.getElementById('statExpired');
+      if(!expEl){
+        expEl = document.createElement('div');
+        expEl.id = 'statExpired';
+        expEl.style.cssText = 'margin-top:6px;font-size:11px;color:#856404;text-align:center';
+        document.getElementById('statsDash').appendChild(expEl);
+      }
+      expEl.textContent = `⚠️ ${d.expired} code${d.expired>1?'s':''} expired without redemption`;
+    }
+  }catch(e){
+    loadStats();
+  }
+}
+
 // Poll counter every 15 seconds
 setInterval(refreshCounter, 15000);
+setInterval(loadDetailedStats, 20000);
 
 // ── PWA ───────────────────────────────────────────────────────────────────────
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
