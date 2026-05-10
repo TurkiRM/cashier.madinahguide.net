@@ -55,15 +55,21 @@
 <body>
 
 <!-- Setup screen — cashier enters their key -->
+<!-- Lang toggle -->
+<div style="position:fixed;top:12px;right:12px;z-index:999;display:flex;gap:6px">
+  <button onclick="setLang('en')" id="btn-en" style="padding:5px 10px;border-radius:8px;border:1.5px solid #085041;background:#085041;color:#fff;font-size:12px;font-weight:600;cursor:pointer">EN</button>
+  <button onclick="setLang('ar')" id="btn-ar" style="padding:5px 10px;border-radius:8px;border:1.5px solid #e0e0e0;background:#fff;color:#555;font-size:12px;font-weight:600;cursor:pointer">AR</button>
+</div>
+
 <div class="setup-card" id="setupCard">
   <div style="text-align:center;margin-bottom:1.25rem">
     <div style="font-size:40px">🏪</div>
-    <div style="font-size:18px;font-weight:700;color:#085041;margin-top:6px">Cashier Portal</div>
+    <div style="font-size:18px;font-weight:700;color:#085041;margin-top:6px" id="portalTitle0">Cashier Portal</div>
     <div style="font-size:13px;color:#888;margin-top:2px">Madinah Guide · دليل المدينة</div>
   </div>
-  <div class="setup-sub">Enter your cashier key to access your offer's redemption page.</div>
+  <div class="setup-sub" id="setupSubTxt">Enter your cashier key to access your offer's redemption page.</div>
   <input class="setup-input" id="keyInput" placeholder="Your cashier key (e.g. AB3X7K2M)" maxlength="8"/>
-  <button class="setup-btn" onclick="loadOffer()">Access Offer →</button>
+  <button class="setup-btn" onclick="loadOffer()"><span id="setupBtnTxt">Access Offer →</span></button>
   <div class="err" id="setupErr"></div>
 </div>
 
@@ -84,19 +90,19 @@
 
   <!-- Stats dashboard -->
   <div id="statsDash" style="display:none;background:#f9f9f9;border-radius:14px;border:1px solid #eee;padding:0.85rem;margin-bottom:12px">
-    <div style="font-size:13px;font-weight:700;color:#085041;margin-bottom:10px">📊 Offer Summary</div>
+    <div style="font-size:13px;font-weight:700;color:#085041;margin-bottom:10px" id="summaryTitle">📊 Offer Summary</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
       <div style="background:#E1F5EE;border-radius:10px;padding:10px 4px">
         <div style="font-size:22px;font-weight:800;color:#085041" id="statRedeemed">—</div>
-        <div style="font-size:11px;color:#555;margin-top:2px">✅ Redeemed</div>
+        <div style="font-size:11px;color:#555;margin-top:2px" id="statRedeemedLbl">✅ Redeemed</div>
       </div>
       <div style="background:#FFF3CD;border-radius:10px;padding:10px 4px">
         <div style="font-size:22px;font-weight:800;color:#856404" id="statPending">—</div>
-        <div style="font-size:11px;color:#555;margin-top:2px">⏳ Pending</div>
+        <div style="font-size:11px;color:#555;margin-top:2px" id="statPendingLbl">⏳ Pending</div>
       </div>
       <div style="background:#f0f0f0;border-radius:10px;padding:10px 4px">
         <div style="font-size:22px;font-weight:800;color:#555" id="statTotal">—</div>
-        <div style="font-size:11px;color:#555;margin-top:2px">📋 Total</div>
+        <div style="font-size:11px;color:#555;margin-top:2px" id="statTotalLbl">📋 Total</div>
       </div>
     </div>
     <button onclick="loadStats()" style="width:100%;margin-top:10px;padding:7px;background:#fff;border:1px solid #ddd;border-radius:8px;font-size:12px;color:#555;cursor:pointer">↻ Refresh</button>
@@ -104,7 +110,7 @@
 
   <!-- Code input -->
   <div class="input-wrap">
-    <label>Enter visitor code</label>
+    <label id="codeLabelTxt">Enter visitor code</label>
     <input class="code-input" id="codeInput" placeholder="ABC123" maxlength="6"
       oninput="this.value=this.value.toUpperCase()"
       onkeydown="if(event.key==='Enter') redeemCode()"/>
@@ -124,7 +130,7 @@
   </div>
 
   <button class="redeem-btn" id="redeemBtn" onclick="redeemCode()">
-    ✅ Redeem Code
+    <span id="redeemBtnTxt">✅ Redeem Code</span>
   </button>
 
   <!-- Result -->
@@ -140,7 +146,7 @@
   </button>
 
   <div style="margin-top:1.5rem;text-align:center;font-size:11px;color:#ccc">
-    Powered by Madinah Guide · madinahguide.net
+    <span id="poweredByTxt">Powered by Madinah Guide · madinahguide.net</span>
   </div>
 </div>
 
@@ -412,6 +418,110 @@ async function loadDetailedStats(){
     loadStats();
   }
 }
+
+
+// ── BILINGUAL ──────────────────────────────────────────────────────────────────
+let curLang = localStorage.getItem('cashier_lang') || 'en';
+
+const T = {
+  en: {
+    portalTitle: 'Cashier Portal',
+    portalSub:   'Madinah Guide · دليل المدينة',
+    setupSub:    'Enter your cashier key to access your offer redemption page.',
+    keyPlaceholder: 'Your cashier key (e.g. AB3X7K2M)',
+    accessBtn:   'Access Offer →',
+    loading:     'Loading…',
+    invalidKey:  'Invalid key. Please check and try again.',
+    noInternet:  'Cannot connect. Please check your internet.',
+    remaining:   'remaining offers',
+    codeLabel:   'Enter visitor code',
+    redeemBtn:   '✅ Redeem Code',
+    checking:    'Checking…',
+    scanBtn:     '📷 Scan QR Code',
+    stopScan:    '✕ Cancel Scan',
+    scanAnother: '↩ Scan another code',
+    summary:     '📊 Offer Summary',
+    redeemed:    '✅ Redeemed',
+    pending:     '⏳ Pending',
+    total:       '📋 Total',
+    refresh:     '↻ Refresh',
+    recent:      'Recent redemptions:',
+    expired_warn:'expired without redemption',
+    alreadyRedeemed: 'Already redeemed',
+    codeNotFound: 'Code not found. Check and try again.',
+    validMsg:    '✅ Valid! Code accepted.',
+    poweredBy:   'Powered by Madinah Guide · madinahguide.net',
+  },
+  ar: {
+    portalTitle: 'بوابة الكاشير',
+    portalSub:   'دليل المدينة · Madinah Guide',
+    setupSub:    'أدخل مفتاح الكاشير للوصول إلى صفحة استبدال عروضك.',
+    keyPlaceholder: 'مفتاح الكاشير (مثال: AB3X7K2M)',
+    accessBtn:   'الدخول إلى العرض ←',
+    loading:     'جارٍ التحميل…',
+    invalidKey:  'المفتاح غير صحيح. يرجى التحقق والمحاولة مجدداً.',
+    noInternet:  'تعذر الاتصال. يرجى التحقق من الإنترنت.',
+    remaining:   'عرض متبقٍ',
+    codeLabel:   'أدخل كود الزائر',
+    redeemBtn:   '✅ استبدال الكود',
+    checking:    'جارٍ التحقق…',
+    scanBtn:     '📷 مسح رمز QR',
+    stopScan:    '✕ إلغاء المسح',
+    scanAnother: '↩ مسح كود آخر',
+    summary:     '📊 ملخص العرض',
+    redeemed:    '✅ تم الاستبدال',
+    pending:     '⏳ معلق',
+    total:       '📋 الإجمالي',
+    refresh:     '↻ تحديث',
+    recent:      'آخر عمليات الاستبدال:',
+    expired_warn:'انتهت صلاحيتها دون استبدال',
+    alreadyRedeemed: 'تم الاستبدال مسبقاً',
+    codeNotFound: 'الكود غير موجود. تحقق وحاول مجدداً.',
+    validMsg:    '✅ صحيح! تم قبول الكود.',
+    poweredBy:   'مدعوم من دليل المدينة · madinahguide.net',
+  }
+};
+
+function setLang(lang){
+  curLang = lang;
+  localStorage.setItem('cashier_lang', lang);
+  const isAr = lang === 'ar';
+  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
+
+  // Toggle buttons
+  document.getElementById('btn-en').style.background = !isAr ? '#085041' : '#fff';
+  document.getElementById('btn-en').style.color      = !isAr ? '#fff' : '#555';
+  document.getElementById('btn-en').style.borderColor= !isAr ? '#085041' : '#e0e0e0';
+  document.getElementById('btn-ar').style.background = isAr  ? '#085041' : '#fff';
+  document.getElementById('btn-ar').style.color      = isAr  ? '#fff' : '#555';
+  document.getElementById('btn-ar').style.borderColor= isAr  ? '#085041' : '#e0e0e0';
+
+  const t = T[lang];
+  // Setup card
+  setTxt('portalTitle0', t.portalTitle);
+  setTxt('setupSubTxt',  t.setupSub);
+  setAttr('keyInput', 'placeholder', t.keyPlaceholder);
+  setTxt('setupBtnTxt',  t.accessBtn);
+  // Redeem card
+  setTxt('portalTitle1', t.portalTitle);
+  setTxt('codeLabelTxt', t.codeLabel);
+  setAttr('codeInput', 'placeholder', 'ABC123');
+  setTxt('redeemBtnTxt', t.redeemBtn);
+  setTxt('scanBtnTxt',   t.scanBtn);
+  setTxt('summaryTitle', t.summary);
+  setTxt('statRedeemedLbl', t.redeemed);
+  setTxt('statPendingLbl',  t.pending);
+  setTxt('statTotalLbl',    t.total);
+  setTxt('refreshBtnTxt',   t.refresh);
+  setTxt('poweredByTxt',    t.poweredBy);
+}
+
+function setTxt(id, val){ const el=document.getElementById(id); if(el) el.textContent=val; }
+function setAttr(id, attr, val){ const el=document.getElementById(id); if(el) el[attr]=val; }
+
+// Apply on load
+setLang(curLang);
 
 // Poll counter every 15 seconds
 setInterval(refreshCounter, 15000);
